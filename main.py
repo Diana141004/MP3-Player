@@ -5,6 +5,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
 from style import stil_list, stil_buton1, stil_buton2, stil_frame
 import os
+import json
 from player_engine import AudioPlayer
 
 
@@ -96,6 +97,7 @@ class MainWindow(QMainWindow):
         self.song_name = QLabel("No song loaded")
         self.song_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.song_name.setStyleSheet("color: #FF8FB7; font-family: Consolas; font-size: 20px")
+        self.song_name.setContentsMargins(25,0,0,0)
 
         self.sound_slider = QSlider(Qt.Orientation.Horizontal)
         self.sound_slider.setMinimum(0)
@@ -118,7 +120,7 @@ class MainWindow(QMainWindow):
         self.artist.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.artist.setStyleSheet("color: #C9B59C; font-family: Consolas; font-size: 15px")
 
-        self.time = QLabel("00:00 / 00:00")
+        self.time = QLabel("0:00 / 0:00")
         self.time.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.time.setStyleSheet("color: #43334C; font-family: Consolas; font-size: 15px")
 
@@ -185,8 +187,12 @@ class MainWindow(QMainWindow):
         self.player = AudioPlayer()
         self.sound_slider.setValue(70)
         self.is_dragging = False
+        self.songs = []
+        self.current_index = 0
 
         self.play_button.clicked.connect(self.play_clicked)
+        self.next_button.clicked.connect(self.next_clicked)
+        self.previous_button.clicked.connect(self.previous_clicked)
         self.sound_slider.valueChanged.connect(self.player.set_volume)
         self.sound_slider.valueChanged.connect(self.change_sound_icon)
         self.volume_icon.clicked.connect(self.volume_button_clicked)
@@ -211,6 +217,27 @@ class MainWindow(QMainWindow):
             self.player.pause()
             self.play_button.setIcon(QIcon("Icons/play.png"))
 
+    def next_clicked(self):
+        if self.current_index == len(self.songs) - 1:
+            self.current_index = 0
+        else:
+            self.current_index += 1
+        self.player.load_song(self.songs[self.current_index])
+        self.play_clicked(True)
+        self.play_button.setChecked(True)
+        self.songs_list.setCurrentRow(self.current_index)
+
+    def previous_clicked(self):
+        if self.current_index == 0:
+            self.current_index = len(self.songs) - 1
+        else:
+            self.current_index -= 1
+        self.player.load_song(self.songs[self.current_index])
+        self.play_clicked(True)
+        self.play_button.setChecked(True)
+        self.songs_list.setCurrentRow(self.current_index)
+
+
     def playlist_clicked(self):
         print(self.playlist_list.currentItem().text())
         self.playlist_name.setText(self.playlist_list.currentItem().text())
@@ -221,6 +248,7 @@ class MainWindow(QMainWindow):
             self.player.load_song(path)
             file_name = os.path.basename(path)
             name = os.path.splitext(file_name)[0]
+            self.songs.append(path)
 
             self.song_name.setText(name)
             self.artist.setText("Local File")
@@ -229,7 +257,7 @@ class MainWindow(QMainWindow):
     def change_song_duration(self, time):
         minutes = time//1000//60
         seconds = (time//1000)%60
-        self.time.setText(f"00:00 / {minutes}:{seconds}")
+        self.time.setText(f"0:00 / {minutes}:{seconds}")
 
         self.time_slider.setMaximum(time//1000)
 
@@ -240,9 +268,18 @@ class MainWindow(QMainWindow):
         minutes_update = time_update // 1000 // 60
         seconds_update = (time_update // 1000) % 60
 
+        if seconds < 10:
+            seconds = f"0{seconds}"
+
+        if seconds_update < 10:
+            seconds_update = f"0{seconds_update}"
+
         self.time.setText(f"{minutes_update}:{seconds_update} / {minutes}:{seconds}")
         if not self.is_dragging:
             self.time_slider.setValue(time_update // 1000)
+
+        if time == time_update:
+            self.next_clicked()
 
     def time_bar_changed(self):
         time_update = self.time_slider.value()*1000
@@ -257,6 +294,10 @@ class MainWindow(QMainWindow):
     def song_clicked(self):
         print(self.songs_list.currentItem().text())
         self.song_name.setText(self.songs_list.currentItem().text())
+        self.current_index = self.songs_list.currentRow()
+        self.player.load_song(self.songs[self.current_index])
+        self.play_clicked(True)
+        self.play_button.setChecked(True)
 
     def volume_button_clicked(self,s):
         if s:
