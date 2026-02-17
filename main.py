@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QMainWindow, QVBoxLayout, QFrame, QLabel, QSlider, \
-    QHBoxLayout, QListWidget, QStyle, QFileDialog
+    QHBoxLayout, QListWidget, QStyle, QFileDialog, QInputDialog, QMessageBox
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
@@ -189,6 +189,7 @@ class MainWindow(QMainWindow):
         self.is_dragging = False
         self.songs = []
         self.current_index = 0
+        self.all_playlists = {}
 
         self.play_button.clicked.connect(self.play_clicked)
         self.next_button.clicked.connect(self.next_clicked)
@@ -203,6 +204,8 @@ class MainWindow(QMainWindow):
         self.player.player.positionChanged.connect(self.update_song_bar)
         self.time_slider.sliderReleased.connect(self.time_bar_changed)
         self.time_slider.sliderPressed.connect(self.slider_pressed)
+        self.button_playlist.clicked.connect(self.create_playlist_clicked)
+        self.load_playlists()
 
 
     #------------------FUNCTIONS-------------------
@@ -236,23 +239,6 @@ class MainWindow(QMainWindow):
         self.play_clicked(True)
         self.play_button.setChecked(True)
         self.songs_list.setCurrentRow(self.current_index)
-
-
-    def playlist_clicked(self):
-        print(self.playlist_list.currentItem().text())
-        self.playlist_name.setText(self.playlist_list.currentItem().text())
-
-    def add_song_clicked(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Alege Melodia", "", "Audio Files (*.mp3 *.wav *.ogg)")
-        if path:
-            self.player.load_song(path)
-            file_name = os.path.basename(path)
-            name = os.path.splitext(file_name)[0]
-            self.songs.append(path)
-
-            self.song_name.setText(name)
-            self.artist.setText("Local File")
-            self.songs_list.addItem(name)
 
     def change_song_duration(self, time):
         minutes = time//1000//60
@@ -291,15 +277,7 @@ class MainWindow(QMainWindow):
 
   #------------SOUND & VOLUME-----------------
 
-    def song_clicked(self):
-        print(self.songs_list.currentItem().text())
-        self.song_name.setText(self.songs_list.currentItem().text())
-        self.current_index = self.songs_list.currentRow()
-        self.player.load_song(self.songs[self.current_index])
-        self.play_clicked(True)
-        self.play_button.setChecked(True)
-
-    def volume_button_clicked(self,s):
+    def volume_button_clicked(self, s):
         if s:
             print("Mute")
             self.player.set_volume(0)
@@ -316,6 +294,77 @@ class MainWindow(QMainWindow):
             self.volume_icon.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaVolume))
         else:
             self.volume_icon.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaVolumeMuted))
+
+#--------- SONGS AND PLAYLISTS ------------
+
+    def playlist_clicked(self):
+        print(self.playlist_list.currentItem().text())
+        self.playlist_name.setText(self.playlist_list.currentItem().text())
+        self.songs_list.clear()
+        self.songs = []
+        current_playlist = self.all_playlists[self.playlist_name.text()]
+        for song in current_playlist:
+            file_name = os.path.basename(song)
+            name = os.path.splitext(file_name)[0]
+            self.songs_list.addItem(name)
+            self.songs.append(song)
+
+    def add_song_clicked(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Alege Melodia", "", "Audio Files (*.mp3 *.wav *.ogg)")
+        if path:
+            self.player.load_song(path)
+            file_name = os.path.basename(path)
+            name = os.path.splitext(file_name)[0]
+            self.songs.append(path)
+
+            self.song_name.setText(name)
+            self.artist.setText("Local File")
+            self.songs_list.addItem(name)
+            self.save_playlist_to_file()
+
+    def create_playlist_clicked(self):
+        name, ok = QInputDialog.getText(self, "Playlist Nou", "Introdu numele playlist-ului:")
+        if ok and name:
+            if name in self.all_playlists:
+                QMessageBox.warning(self, "Eroare", "Acest playlist există deja!")
+                return
+            self.all_playlists[name] = []
+            self.playlist_list.addItem(name)
+            self.save_playlist_to_file()
+            print(f"Playlist-ul {name} a fost creat!")
+
+
+    def song_clicked(self):
+        if self.songs_list.currentRow() < 0 or self.songs_list.currentItem() is None:
+            return
+
+        print(self.songs_list.currentItem().text())
+        self.song_name.setText(self.songs_list.currentItem().text())
+        self.current_index = self.songs_list.currentRow()
+        self.player.load_song(self.songs[self.current_index])
+        self.play_clicked(True)
+        self.play_button.setChecked(True)
+
+
+    def save_playlist_to_file(self):
+        self.all_playlists[self.playlist_name.text()] = self.songs
+
+        with open("playlist_data.json", "w") as file:
+            json.dump(self.all_playlists, file, indent = 4)
+
+    def load_playlists(self):
+        if os.path.exists("playlist_data.json"):
+            with open("playlist_data.json", "r") as file:
+                data = json.load(file)
+                self.all_playlists = data
+
+        for playlist in self.all_playlists:
+            self.playlist_list.addItem(playlist)
+
+        if self.playlist_list.count() > 0:
+            self.playlist_list.setCurrentRow(0)
+            self.playlist_clicked()
+
 
 app = QApplication([])
 window = MainWindow()
