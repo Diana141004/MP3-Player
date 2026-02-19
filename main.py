@@ -31,9 +31,13 @@ class MainWindow(QMainWindow):
         left_frame.setLineWidth(3)
         left_frame.setStyleSheet(stil_frame)
 
-        self.button_playlist = QPushButton("Create Playlist")
-        self.button_playlist.setFixedSize(120,32)
-        self.button_playlist.setStyleSheet(stil_buton2)
+        self.button_add_playlist = QPushButton("Create Playlist")
+        self.button_add_playlist.setFixedSize(120, 32)
+        self.button_add_playlist.setStyleSheet(stil_buton2)
+
+        self.button_delete_playlist = QPushButton("Delete Playlist")
+        self.button_delete_playlist.setFixedSize(120, 32)
+        self.button_delete_playlist.setStyleSheet(stil_buton2)
 
         label_playlist = QLabel("Playlists")
         label_playlist.setStyleSheet("color: #FDB5CE; font-family; Consolas; font-size: 20px")
@@ -43,7 +47,14 @@ class MainWindow(QMainWindow):
         # self.playlist_list.addItems(["Playlist1", "Playlist2", "Playlist4", "Playlist5", "Playlist6", "Playlist7", "Playlist8", "Playlist9", "Playlist10", "Playlist11", "Playlist12", "Playlist13", "Playlist14", "Playlist15", "Playlist16", "Playlist17", "Playlist18", "Playlist19", "Playlist20", "Playlist21", "Playlist22", "Playlist23", "Playlist24", "Playlist25"])
 
         layout_frame1 = QVBoxLayout()
-        layout_frame1.addWidget(self.button_playlist, alignment= Qt.AlignmentFlag.AlignCenter)
+        buttons_playlist_layout = QHBoxLayout()
+
+        buttons_playlist_layout.addWidget(self.button_delete_playlist)
+        buttons_playlist_layout.addWidget(self.button_add_playlist)
+        buttons_playlist_frame = QFrame()
+        buttons_playlist_frame.setLayout(buttons_playlist_layout)
+
+        layout_frame1.addWidget(buttons_playlist_frame)
         layout_frame1.addWidget(label_playlist, alignment= Qt.AlignmentFlag.AlignCenter)
         layout_frame1.addWidget(self.playlist_list)
 
@@ -230,15 +241,17 @@ class MainWindow(QMainWindow):
         self.player.player.positionChanged.connect(self.update_song_bar)
         self.time_slider.sliderReleased.connect(self.time_bar_changed)
         self.time_slider.sliderPressed.connect(self.slider_pressed)
-        self.button_playlist.clicked.connect(self.create_playlist_clicked)
+        self.button_add_playlist.clicked.connect(self.create_playlist_clicked)
         self.repeat_button.clicked.connect(self.repeat_clicked)
         self.shuffle_button.clicked.connect(self.shuffle_clicked)
+        self.button_delete_playlist.clicked.connect(self.delete_playlist_clicked)
 
         self.load_playlists()
 
 
     #------------------FUNCTIONS-------------------
 
+#-------------- BOTTOM BUTTONS ----------------
     def play_clicked(self, s):
         if s:
             print("Playing")
@@ -334,6 +347,9 @@ class MainWindow(QMainWindow):
             current = self.shuffled_songs[self.shuffle_index]
             self.current_index = self.songs.index(current)
 
+
+#-------------- BARS, SOUNDS AND VOLUME ------------
+
     def change_song_duration(self, time):
         minutes = time//1000//60
         seconds = (time//1000)%60
@@ -369,8 +385,6 @@ class MainWindow(QMainWindow):
     def slider_pressed(self):
         self.is_dragging = True
 
-  #------------SOUND & VOLUME-----------------
-
     def volume_button_clicked(self, s):
         if s:
             print("Mute")
@@ -390,18 +404,6 @@ class MainWindow(QMainWindow):
             self.volume_icon.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaVolumeMuted))
 
 #--------- SONGS AND PLAYLISTS ------------
-
-    def playlist_clicked(self):
-        print(self.playlist_list.currentItem().text())
-        self.playlist_name.setText(self.playlist_list.currentItem().text())
-        self.songs_list.clear()
-        self.songs = []
-        current_playlist = self.all_playlists[self.playlist_name.text()]
-        for song in current_playlist:
-            file_name = os.path.basename(song)
-            name = os.path.splitext(file_name)[0]
-            self.songs_list.addItem(name)
-            self.songs.append(song)
 
     def add_song_clicked(self):
         path, _ = QFileDialog.getOpenFileName(self, "Alege Melodia", "", "Audio Files (*.mp3 *.wav *.ogg)")
@@ -438,19 +440,6 @@ class MainWindow(QMainWindow):
 
         self.songs_list.blockSignals(False)
 
-
-    def create_playlist_clicked(self):
-        name, ok = QInputDialog.getText(self, "Playlist Nou", "Introdu numele playlist-ului:")
-        if ok and name:
-            if name in self.all_playlists:
-                QMessageBox.warning(self, "Eroare", "Acest playlist există deja!")
-                return
-            self.all_playlists[name] = []
-            self.playlist_list.addItem(name)
-            self.save_playlist_to_file()
-            print(f"Playlist-ul {name} a fost creat!")
-
-
     def song_clicked(self):
         if self.songs_list.currentRow() < 0 or self.songs_list.currentItem() is None:
             return
@@ -462,6 +451,59 @@ class MainWindow(QMainWindow):
         self.play_clicked(True)
         self.play_button.setChecked(True)
 
+
+    def create_playlist_clicked(self):
+        name, ok = QInputDialog.getText(self, "New Playlist", "Type the playlist's name:")
+        if ok and name:
+            if name in self.all_playlists:
+                QMessageBox.warning(self, "Error", "This playlist already exists!")
+                return
+            self.all_playlists[name] = []
+            self.playlist_list.addItem(name)
+            self.save_playlist_to_file()
+            print(f"Playlist {name} was created!")
+
+    def delete_playlist_clicked(self):
+        playlist_current = self.playlist_list.currentRow()
+
+        if playlist_current <0:
+            return
+
+        self.songs_list.blockSignals(True)
+
+        self.player.pause()
+        self.song_name.setText("No song loaded")
+        self.current_index = 0
+        self.time.setText(f"0:00 / 0:00")
+
+
+        self.songs_list.clear()
+        self.songs = []
+        self.all_playlists.pop(self.playlist_name.text(),None)
+        with open("playlist_data.json", "w") as file:
+            json.dump(self.all_playlists, file, indent=4)
+        # self.playlist_list.setCurrentRow(-1)
+        self.playlist_list.takeItem(playlist_current)
+        self.songs_list.blockSignals(False)
+
+
+
+
+    def playlist_clicked(self):
+        if self.playlist_list.currentItem():
+            print(self.playlist_list.currentItem().text())
+        else:
+            return
+
+        self.playlist_name.setText(self.playlist_list.currentItem().text())
+        self.songs_list.clear()
+        self.songs = []
+        current_playlist = self.all_playlists[self.playlist_name.text()]
+        for song in current_playlist:
+            file_name = os.path.basename(song)
+            name = os.path.splitext(file_name)[0]
+            self.songs_list.addItem(name)
+            self.songs.append(song)
 
     def save_playlist_to_file(self):
         self.all_playlists[self.playlist_name.text()] = self.songs
