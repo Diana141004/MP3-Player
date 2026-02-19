@@ -2,7 +2,7 @@
 
 A modern, fully functional MP3 Player built from scratch using Python and PyQt6. This application features a custom-designed graphical user interface (GUI) and robust background logic for handling audio playback and playlist management.
 
-## ✨ Key Features
+## Key Features
 
 * **Audio Playback:** Play, Pause, Next, and Previous functionality.
 * **Advanced Playback Modes:** * **🔀 Shuffle:** Generates an randomized queue to ensure no repeated songs until the playlist ends.
@@ -29,6 +29,8 @@ A modern, fully functional MP3 Player built from scratch using Python and PyQt6.
    ```bash
    git clone https://github.com/Diana141004/MP3-Player.git
 2. Install the required dependencies:
+ ```bash
    pip install -r requirements.txt
-3. Run the application:
+4. Run the application:
+```bash
    python main.py
