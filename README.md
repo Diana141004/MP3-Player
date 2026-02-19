@@ -32,7 +32,7 @@ A modern, fully functional MP3 Player built from scratch using Python and PyQt6.
  ```bash
    pip install -r requirements.txt
 ```
-4. Run the application:
+3. Run the application:
 ```bash
    python main.py
 ```
