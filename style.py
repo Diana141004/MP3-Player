@@ -6,7 +6,37 @@ stil_frame = """
         }
 """
 
-
+stil_button_toggle = """
+            QPushButton {
+        background-color: transparent;
+        border: none;
+        border-radius: 25px;
+    }
+    
+    /* Cand pui mouse-ul pe el */
+    QPushButton:hover {
+        background-color: #FFC4C4;
+        border-radius: 5px; 
+    }
+    
+    /* Cand dai click pe el (momentul apasarii) */
+    QPushButton:pressed {
+        background-color: #EE6983;
+        border-radius: 5px;
+    }
+    
+    /* Cand este ACTIVAT (Checked) - Va ramane ca la hover */
+    QPushButton:checked {
+        background-color: #FFC4C4;
+        border-radius: 5px;
+    }
+    
+    /* Cand pui mouse-ul pe el si este DEJA activat (optional, un mic efect) */
+    QPushButton:checked:hover {
+        background-color: #FFB0B0; 
+        border-radius: 5px;
+    }
+"""
 
 stil_buton1 = """
             QPushButton {
@@ -39,7 +69,6 @@ stil_buton2 = """
 """
 
 stil_list =     """
-            /* 1. Stilul General al Cutiei (Lista) */
             QListWidget {
                 background-color: #FFC4C4;  /* Un gri inchis pentru sidebar */
                 color: #FFFFFF;             /* Text alb */

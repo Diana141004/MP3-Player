@@ -3,10 +3,11 @@ from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QMainWindow, QVB
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import QSize
-from style import stil_list, stil_buton1, stil_buton2, stil_frame
+from style import stil_list, stil_buton1, stil_buton2, stil_frame, stil_button_toggle
 import os
 import json
 from player_engine import AudioPlayer
+import random
 
 
 
@@ -64,10 +65,16 @@ class MainWindow(QMainWindow):
         self.playlist_name.setStyleSheet("color: #FDB5CE; font-family; Consolas; font-size: 20px")
 
         self.add_song_button = QPushButton("Add Song")
-        self.add_song_button.setFixedSize(60,30)
+        self.add_song_button.setFixedSize(80,30)
         self.add_song_button.setStyleSheet(stil_buton2)
 
+        self.delete_song_button = QPushButton("Delete Song")
+        self.delete_song_button.setFixedSize(80, 30)
+        self.delete_song_button.setStyleSheet(stil_buton2)
+
         layout_case.addWidget(self.playlist_name, alignment= Qt.AlignmentFlag.AlignLeft)
+        layout_case.addStretch()
+        layout_case.addWidget(self.delete_song_button, alignment=Qt.AlignmentFlag.AlignRight)
         layout_case.addWidget(self.add_song_button, alignment=Qt.AlignmentFlag.AlignRight)
 
         self.songs_list = QListWidget()
@@ -147,9 +154,25 @@ class MainWindow(QMainWindow):
         self.previous_button.setStyleSheet(stil_buton1)
         self.previous_button.setFixedSize(60, 60)
 
+        self.shuffle_button = QPushButton()
+        self.shuffle_button.setIcon(QIcon("Icons/shuffle.png"))
+        self.shuffle_button.setIconSize(QSize(60, 60))
+        self.shuffle_button.setStyleSheet(stil_button_toggle)
+        self.shuffle_button.setFixedSize(60, 60)
+        self.shuffle_button.setCheckable(True)
+
+        self.repeat_button = QPushButton()
+        self.repeat_button.setIcon(QIcon("Icons/repeat.png"))
+        self.repeat_button.setIconSize(QSize(60, 60))
+        self.repeat_button.setStyleSheet(stil_button_toggle)
+        self.repeat_button.setFixedSize(60, 60)
+        self.repeat_button.setCheckable(True)
+
+        buttons_layout.addWidget(self.shuffle_button)
         buttons_layout.addWidget(self.previous_button)
         buttons_layout.addWidget(self.play_button)
         buttons_layout.addWidget(self.next_button)
+        buttons_layout.addWidget(self.repeat_button)
         buttons_layout.setSpacing(0)
         buttons_layout.setContentsMargins(100, 0, 100, 0)
 
@@ -189,6 +212,8 @@ class MainWindow(QMainWindow):
         self.is_dragging = False
         self.songs = []
         self.current_index = 0
+        self.shuffled_songs = []
+        self.shuffle_index = 0
         self.all_playlists = {}
 
         self.play_button.clicked.connect(self.play_clicked)
@@ -200,11 +225,15 @@ class MainWindow(QMainWindow):
         self.songs_list.currentItemChanged.connect(self.song_clicked)
         self.playlist_list.currentItemChanged.connect(self.playlist_clicked)
         self.add_song_button.clicked.connect(self.add_song_clicked)
+        self.delete_song_button.clicked.connect(self.delete_song_clicked)
         self.player.player.durationChanged.connect(self.change_song_duration)
         self.player.player.positionChanged.connect(self.update_song_bar)
         self.time_slider.sliderReleased.connect(self.time_bar_changed)
         self.time_slider.sliderPressed.connect(self.slider_pressed)
         self.button_playlist.clicked.connect(self.create_playlist_clicked)
+        self.repeat_button.clicked.connect(self.repeat_clicked)
+        self.shuffle_button.clicked.connect(self.shuffle_clicked)
+
         self.load_playlists()
 
 
@@ -221,24 +250,89 @@ class MainWindow(QMainWindow):
             self.play_button.setIcon(QIcon("Icons/play.png"))
 
     def next_clicked(self):
-        if self.current_index == len(self.songs) - 1:
-            self.current_index = 0
+
+        if self.repeat_button.isChecked():
+            self.player.load_song(self.songs[self.current_index])
+            self.play_clicked(True)
+            self.play_button.setChecked(True)
+            self.songs_list.setCurrentRow(self.current_index)
+            return
+
+        if self.shuffle_button.isChecked():
+            if self.shuffle_index == len(self.shuffled_songs) - 1:
+                self.shuffle_index = 0
+            else:
+                self.shuffle_index += 1
+
+            current = self.shuffled_songs[self.shuffle_index]
+            self.current_index = self.songs.index(current)
+            self.player.load_song(current)
+
         else:
-            self.current_index += 1
-        self.player.load_song(self.songs[self.current_index])
+
+            if self.current_index == len(self.songs) - 1:
+                self.current_index = 0
+            else:
+                self.current_index += 1
+
+            self.player.load_song(self.songs[self.current_index])
+
         self.play_clicked(True)
         self.play_button.setChecked(True)
         self.songs_list.setCurrentRow(self.current_index)
 
     def previous_clicked(self):
-        if self.current_index == 0:
-            self.current_index = len(self.songs) - 1
+        if self.repeat_button.isChecked():
+            self.player.load_song(self.songs[self.current_index])
+            self.play_clicked(True)
+            self.play_button.setChecked(True)
+            return
+
+        if self.shuffle_button.isChecked():
+            if self.shuffle_index == 0:
+                self.shuffle_index = len(self.shuffled_songs) - 1
+            else:
+                self.shuffle_index -= 1
+
+            current = self.shuffled_songs[self.shuffle_index]
+            self.current_index = self.songs.index(current)
+            self.player.load_song(current)
+
         else:
-            self.current_index -= 1
-        self.player.load_song(self.songs[self.current_index])
+
+            if self.current_index == 0:
+                self.current_index = len(self.songs) - 1
+            else:
+                self.current_index -= 1
+            self.player.load_song(self.songs[self.current_index])
+
         self.play_clicked(True)
         self.play_button.setChecked(True)
         self.songs_list.setCurrentRow(self.current_index)
+
+    def repeat_clicked(self):
+        if self.repeat_button.isChecked():
+            print("repeat active")
+        else:
+            print("repeat inactive")
+
+    def shuffle_clicked(self):
+        if self.shuffle_button.isChecked():
+
+            self.shuffled_songs = self.songs.copy()
+            random.shuffle(self.shuffled_songs)
+            print("shuffle active")
+
+            if self.songs:
+                current = self.songs[self.current_index]
+                self.shuffled_songs.remove(current)
+                self.shuffled_songs.insert(0,current)
+                self.shuffle_index = 0
+
+        else:
+            print("shuffle inactive")
+            current = self.shuffled_songs[self.shuffle_index]
+            self.current_index = self.songs.index(current)
 
     def change_song_duration(self, time):
         minutes = time//1000//60
@@ -321,6 +415,29 @@ class MainWindow(QMainWindow):
             self.artist.setText("Local File")
             self.songs_list.addItem(name)
             self.save_playlist_to_file()
+
+    def delete_song_clicked(self):
+        row = self.songs_list.currentRow()
+        if  row < 0:
+            return
+
+        self.songs_list.blockSignals(True)
+
+        self.player.pause()
+        self.song_name.setText("No song loaded")
+        self.current_index = 0
+        self.time.setText(f"0:00 / 0:00")
+
+        if self.shuffle_button.isChecked():
+            current = self.songs[row]
+            self.shuffled_songs.remove(current)
+
+        self.songs.pop(row)
+        self.songs_list.takeItem(row)
+        self.save_playlist_to_file()
+
+        self.songs_list.blockSignals(False)
+
 
     def create_playlist_clicked(self):
         name, ok = QInputDialog.getText(self, "Playlist Nou", "Introdu numele playlist-ului:")
