@@ -36,3 +36,6 @@ A modern, fully functional MP3 Player built from scratch using Python and PyQt6.
 ```bash
    python main.py
 ```
+
+
+Icons design made by https://github.com/Revfem
