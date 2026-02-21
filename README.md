@@ -39,3 +39,4 @@ A modern, fully functional MP3 Player built from scratch using Python and PyQt6.
 
 
 Icons design made by https://github.com/Revfem
+For songs, check this site where you can download mp3 files and upload them in the project by pressing the button "add Song": https://mp3juice.as/ 
